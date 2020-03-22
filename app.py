@@ -29,11 +29,23 @@ migration = Migrate(app, db)
 # Models.
 #----------------------------------------------------------------------------#
 
-shows = db.Table('show', 
-  db.Column('venue_id', db.Integer, db.ForeignKey('venue.id'), primary_key=True),
-  db.Column('artist_id', db.Integer, db.ForeignKey('artist.id'), primary_key=True),
-  db.Column('start_time', db.Date)
-)
+# shows = db.Table('show', 
+#   db.Column('venue_id', db.Integer, db.ForeignKey('venue.id'), primary_key=True),
+#   db.Column('artist_id', db.Integer, db.ForeignKey('artist.id'), primary_key=True),
+#   db.Column('start_time', db.Date)
+# )
+
+class Show(db.Model):
+  __tablename__ = 'show'
+  venue_id = db.Column(db.Integer, db.ForeignKey('venue.id'), primary_key=True)
+  artist_id = db.Column(db.Integer, db.ForeignKey('artist.id'), primary_key=True)
+  start_time = db.Column(db.DateTime)
+  artist = db.relationship("Artist", back_populates="venue")
+  venue = db.relationship("Venue", back_populates="artist")
+
+  def __repr__(self):
+      return f'<Shows {self.venue.name} {self.artist.name} {self.start_time}>'
+
 
 class Venue(db.Model):
     __tablename__ = 'venue'
@@ -49,10 +61,12 @@ class Venue(db.Model):
     facebook_link = db.Column(db.String(120))
     seeking_talent = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(500))
-    artists = db.relationship('Artist', secondary=shows, backref=db.backref('venues', lazy=True))
+    artist = db.relationship('Show', back_populates='venue')
 
-
+    def __repr__(self):
+          return f'<Venue {self.name}>'
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
+
 
 class Artist(db.Model):
     __tablename__ = 'artist'
@@ -68,7 +82,10 @@ class Artist(db.Model):
     facebook_link = db.Column(db.String(120))
     seeking_venue = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(500))
+    venue = db.relationship('Show', back_populates='artist')
 
+    def __repr__(self):
+          return f'<Artist {self.name}>'
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
@@ -112,7 +129,7 @@ def venues():
           venue_dict = {
           'id': venue.id,
           'name': venue.name,
-          'num_upcoming_shows': len(venue.artists)
+          'num_upcoming_shows': len(venue.artist)
           }
           venues_list.append(venue_dict)
 
@@ -137,12 +154,62 @@ def search_venues():
       "num_upcoming_shows": 0,
     }]
   }
+  response = {}
+  search_term = request.form['search_term']
+  search_query = Venue.query.filter(Venue.name.ilike("%" + search_term + "%")).all()
+
+  data = []
+  for result in search_query:
+    data_dict = {
+      'id': result.id,
+      'name': result.name,
+      'num_upcoming_shows': len(result.artists)
+    }
+    data.append(data_dict)
+
+  response["count"] = len(search_query)
+  response["data"] = data
+
   return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
 
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
   # shows the venue page with the given venue_id
   # TODO: replace with real venue data from the venues table, using venue_id
+  venue = Venue.query.filter(Venue.id == venue_id).one_or_none()
+
+  if venue is None:
+    not_found_error()
+  else:
+    data = {
+      'id': venue.id,
+      'name': venue.name,
+      'address': venue.address,
+      'city': venue.city,
+      'state': venue.state,
+      'phone': venue.phone,
+      'website': venue.website,
+      'facebook_link': venue.facebook_link,
+      'seeking_talent': venue.seeking_talent,
+      'seeking_description': venue.seeking_description,
+      'image_link': venue.image_link
+    }
+
+    upcoming_shows = []
+    for show in venue.artists:
+      show_dict = {
+        "artist_id": show.id,
+        "artist_name": show.name,
+        "artist_image_link": show.image_link,
+        "start_time": show.start_time
+      }
+      upcoming_shows.append(show_dict)
+
+    data["past_shows"] = []
+    data["upcoming_shows"] = []
+    data["past_shows_count"] = 0,
+    data["upcoming_shows_count"] = len(venue.artists)
+
   data1={
     "id": 1,
     "name": "The Musical Hop",
