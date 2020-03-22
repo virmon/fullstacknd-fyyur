@@ -180,7 +180,8 @@ def show_venue(venue_id):
           'facebook_link': venue.facebook_link,
           'seeking_talent': venue.seeking_talent,
           'seeking_description': venue.seeking_description,
-          'image_link': venue.image_link
+          'image_link': venue.image_link,
+          'genres': venue.genres.split(',')
       }
 
   # select all show with venue_id
@@ -229,15 +230,18 @@ def create_venue_form():
 
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
-
   try:
     name = request.form.get('name', '')
     city = request.form.get('city', '')
     state = request.form.get('state', '')
     address = request.form.get('address', '')
     phone = request.form.get('phone', '')
-    genres = request.form.get('genres', '')
+    genres = request.form.getlist('genres')
     facebook_link = request.form.get('facebook_link', '')
+
+    genre_string = ''
+    for genre in genres:
+      genre_string += genre + ', '
 
     venue = Venue(
       name = name,
@@ -245,7 +249,7 @@ def create_venue_submission():
       state = state,
       address = address,
       phone = phone,
-      genres = genres,
+      genres = genre_string[0:len(genre_string)-2],
       facebook_link = facebook_link
     )
 
@@ -333,9 +337,9 @@ def show_artist(artist_id):
           'seeking_venue': artist.seeking_venue,
           'seeking_description': artist.seeking_description,
           'image_link': artist.image_link,
-          'genres': ['Rock and Roll']
+          'genres': artist.genres.split(',')
       }
-
+      
   # select all show with artist_id
   show = Show.query.filter(Show.artist_id == artist_id).all()
 
@@ -449,15 +453,19 @@ def create_artist_submission():
     city = request.form.get('city', '')
     state = request.form.get('state', '')
     phone = request.form.get('phone', '')
-    genres = request.form.get('genres', '')
+    genres = request.form.getlist('genres')
     facebook_link = request.form.get('facebook_link', '')
     
+    genre_string = ''
+    for genre in genres:
+      genre_string += genre + ', '
+
     artist = Artist(
       name = name,
       city = city,
       state = state,
       phone = phone,
-      gerens = genres,
+      genres = genre_string[0:len(genre_string)-2],
       facebook_link = facebook_link
     )
 
